@@ -1,0 +1,8 @@
+.vscode/
+.DS_Store
+infra/compose/caddy_data/
+infra/compose/caddy_config/
+node_modules/
+venv/
+__pycache__/
+*.pyc
