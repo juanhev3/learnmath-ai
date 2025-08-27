@@ -1,4 +1,10 @@
 :80 {
-  root * /srv
-  file_server
+  # /api -> backend (FastAPI). handle_path strips the /api prefix.
+  handle_path /api/* {
+    reverse_proxy backend:8000
+  }
+
+  # everything else -> frontend (Next.js)
+  reverse_proxy frontend:3000
 }
+
