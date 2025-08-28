@@ -1,81 +1,107 @@
 "use client";
-
 import { useState } from "react";
 
-export default function Calculator() {
+type ApiResp = {
+  ok: boolean;
+  op?: string;
+  input?: string;
+  result?: string;
+  result_list?: string[];
+  latex?: string;
+  error?: string;
+};
+
+export default function CalculatorPage() {
   const [expr, setExpr] = useState("integrate(sin(x), x)");
-  const [out, setOut] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [resp, setResp] = useState<ApiResp | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function onCompute() {
     setLoading(true);
     setErr(null);
-    setOut("");
+    setResp(null);
     try {
       const r = await fetch("/api/compute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ expr }),
       });
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const data: unknown = await r.json();
-
-      // We’ll do a minimal runtime check
-      if (
-        typeof data === "object" &&
-        data !== null &&
-        "ok" in data &&
-        (data as { ok: unknown }).ok === true
-      ) {
-        setOut(JSON.stringify(data, null, 2));
+      const data = (await r.json()) as ApiResp;
+      if (!data.ok) {
+        setErr(data.error || "Unknown error");
       } else {
-        const msg =
-          typeof data === "object" && data && "error" in data
-            ? String((data as { error?: unknown }).error)
-            : "Unexpected response";
-        setErr(msg);
+        setResp(data);
       }
-    } catch (e: unknown) {
-      if (e instanceof Error) setErr(e.message);
-      else setErr(String(e));
+    } catch (e: any) {
+      setErr(e?.message || "Network error");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <section className="space-y-4">
-      <h2 className="text-2xl font-semibold">AI Math Calculator</h2>
-      <p className="text-slate-300">
-        Try: <code>solve(x**2 - 4, x)</code> or <code>integrate(sin(x), x)</code>
+    <main className="max-w-3xl mx-auto p-6 space-y-6">
+      <h1 className="text-3xl font-bold">AI Math Calculator</h1>
+      <p className="text-neutral-400">
+        Try: <code>solve(x**2 - 4, x)</code>,{" "}
+        <code>integrate(sin(x), x)</code>, <code>diff(x**3, x)</code>,{" "}
+        <code>simplify((x**2-1)/(x-1))</code>,{" "}
+        <code>eval(sin(x)+x, x=1.2)</code>
       </p>
-      <form onSubmit={onSubmit} className="flex flex-col gap-3 max-w-2xl">
-        <input
-          value={expr}
-          onChange={(ev) => setExpr(ev.target.value)}
-          className="w-full rounded border border-slate-700 bg-slate-900 px-3 py-2"
-          placeholder="Enter SymPy expression"
-        />
-        <button
-          disabled={loading}
-          className="w-fit rounded bg-emerald-600 px-4 py-2 text-white disabled:opacity-50"
-        >
-          {loading ? "Computing..." : "Compute"}
-        </button>
-      </form>
+
+      <input
+        className="w-full bg-neutral-900 border border-neutral-700 rounded px-3 py-2"
+        value={expr}
+        onChange={(e) => setExpr(e.target.value)}
+        placeholder="integrate(sin(x), x)"
+      />
+
+      <button
+        onClick={onCompute}
+        disabled={loading}
+        className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 px-4 py-2 rounded"
+      >
+        {loading ? "Computing…" : "Compute"}
+      </button>
+
       {err && (
-        <div className="rounded border border-red-700 bg-red-900/30 p-3 text-sm text-red-200">
+        <div className="border border-red-800 bg-red-900/40 text-red-200 rounded p-3">
           Error: {err}
         </div>
       )}
-      {out && (
-        <pre className="rounded border border-slate-800 bg-slate-950 p-3 text-sm overflow-auto">
-          {out}
-        </pre>
+
+      {resp && (
+        <div className="border border-neutral-700 rounded p-4 space-y-2 bg-neutral-900/40">
+          <div className="text-sm text-neutral-400">Operation: {resp.op}</div>
+          <pre className="text-sm text-neutral-400">
+            input: {JSON.stringify(resp.input)}
+          </pre>
+          {resp.result_list ? (
+            <>
+              <div className="text-neutral-400 text-sm">Solutions</div>
+              <ul className="list-disc pl-5">
+                {resp.result_list.map((s, i) => (
+                  <li key={i} className="font-mono">{s}</li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <>
+              <div className="text-neutral-400 text-sm">Result</div>
+              <div className="font-mono text-green-400 break-words">
+                {resp.result}
+              </div>
+            </>
+          )}
+          {resp.latex && (
+            <>
+              <div className="text-neutral-400 text-sm">LaTeX</div>
+              <div className="font-mono break-words">{resp.latex}</div>
+            </>
+          )}
+        </div>
       )}
-    </section>
+    </main>
   );
 }
-
