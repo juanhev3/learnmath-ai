@@ -1,5 +1,8 @@
 "use client";
-import { useState } from "react";
+
+import { useMemo, useState } from "react";
+import katex from "katex";
+import "katex/dist/katex.min.css";
 
 type ApiResp = {
   ok: boolean;
@@ -10,6 +13,29 @@ type ApiResp = {
   latex?: string;
   error?: string;
 };
+
+function LatexBlock({ latex }: { latex: string }) {
+  // Render safely with KaTeX; don't throw on parse errors
+  const html = useMemo(() => {
+    try {
+      // latex from backend already has proper backslashes
+      return katex.renderToString(latex, {
+        throwOnError: false,
+        displayMode: true,
+      });
+    } catch {
+      return "";
+    }
+  }, [latex]);
+
+  if (!html) return null;
+  return (
+    <div
+      className="p-3 rounded bg-neutral-900/30 border border-neutral-700"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
 
 export default function CalculatorPage() {
   const [expr, setExpr] = useState("integrate(sin(x), x)");
@@ -27,14 +53,17 @@ export default function CalculatorPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ expr }),
       });
+
       const data = (await r.json()) as ApiResp;
       if (!data.ok) {
-        setErr(data.error || "Unknown error");
+        setErr(data.error ?? "Unknown error");
       } else {
         setResp(data);
       }
-    } catch (e: any) {
-      setErr(e?.message || "Network error");
+    } catch (e: unknown) {
+      // no `any` — use a type guard
+      if (e instanceof Error) setErr(e.message);
+      else setErr("Network error");
     } finally {
       setLoading(false);
     }
@@ -43,10 +72,10 @@ export default function CalculatorPage() {
   return (
     <main className="max-w-3xl mx-auto p-6 space-y-6">
       <h1 className="text-3xl font-bold">AI Math Calculator</h1>
+
       <p className="text-neutral-400">
-        Try: <code>solve(x**2 - 4, x)</code>,{" "}
-        <code>integrate(sin(x), x)</code>, <code>diff(x**3, x)</code>,{" "}
-        <code>simplify((x**2-1)/(x-1))</code>,{" "}
+        Try: <code>solve(x**2 - 4, x)</code>, <code>integrate(sin(x), x)</code>,{" "}
+        <code>diff(x**3, x)</code>, <code>simplify((x**2-1)/(x-1))</code>,{" "}
         <code>eval(sin(x)+x, x=1.2)</code>
       </p>
 
@@ -72,11 +101,14 @@ export default function CalculatorPage() {
       )}
 
       {resp && (
-        <div className="border border-neutral-700 rounded p-4 space-y-2 bg-neutral-900/40">
+        <div className="border border-neutral-700 rounded p-4 space-y-3 bg-neutral-900/40">
           <div className="text-sm text-neutral-400">Operation: {resp.op}</div>
-          <pre className="text-sm text-neutral-400">
-            input: {JSON.stringify(resp.input)}
-          </pre>
+          {resp.input && (
+            <div className="text-sm text-neutral-400">
+              Input: <span className="font-mono">{resp.input}</span>
+            </div>
+          )}
+
           {resp.result_list ? (
             <>
               <div className="text-neutral-400 text-sm">Solutions</div>
@@ -87,17 +119,20 @@ export default function CalculatorPage() {
               </ul>
             </>
           ) : (
-            <>
-              <div className="text-neutral-400 text-sm">Result</div>
-              <div className="font-mono text-green-400 break-words">
-                {resp.result}
-              </div>
-            </>
+            resp.result && (
+              <>
+                <div className="text-neutral-400 text-sm">Result</div>
+                <div className="font-mono text-green-400 break-words">
+                  {resp.result}
+                </div>
+              </>
+            )
           )}
+
           {resp.latex && (
             <>
-              <div className="text-neutral-400 text-sm">LaTeX</div>
-              <div className="font-mono break-words">{resp.latex}</div>
+              <div className="text-neutral-400 text-sm">Math (LaTeX)</div>
+              <LatexBlock latex={resp.latex} />
             </>
           )}
         </div>
