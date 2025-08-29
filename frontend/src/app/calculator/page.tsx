@@ -1,97 +1,90 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import LatexBlock from '@/components/LatexBlock';
+import React, { useState } from "react";
+import LatexBlock from "@/components/LatexBlock";
 
-type ApiOk = {
-  ok: true;
+type CalcResponse = {
+  ok: boolean;
+  op: string;
   input: string;
-  result: string | number;
-  latex: string;
-};
-
-type ApiErr = {
-  ok: false;
-  error: string;
+  result?: string;
+  result_list?: string[];
+  latex?: string | null;
+  error?: string | null;
 };
 
 export default function CalculatorPage() {
-  const [expr, setExpr] = useState('integrate(sin(x), x)');
-  const [res, setRes] = useState<ApiOk | ApiErr | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [expr, setExpr] = useState("solve(x**2 - 4, x)");
+  const [data, setData] = useState<CalcResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
-  const compute = async () => {
-    setBusy(true);
-    setRes(null);
+  async function onCompute() {
+    setLoading(true);
+    setErr(null);
+    setData(null);
     try {
-      const r = await fetch('/api/compute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ expr }),
+      const res = await fetch("/api/calc?expr=" + encodeURIComponent(expr), {
+        method: "GET",
       });
-      const j: ApiOk | ApiErr = await r.json();
-      setRes(j);
+      const json = (await res.json()) as CalcResponse;
+      setData(json);
+      if (!json.ok && json.error) setErr(json.error);
     } catch (e: any) {
-      setRes({ ok: false, error: String(e?.message ?? e) });
+      setErr(e?.message ?? "Unknown error");
     } finally {
-      setBusy(false);
+      setLoading(false);
     }
-  };
+  }
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="max-w-4xl mx-auto px-4 py-10">
-        <h1 className="text-3xl font-bold mb-6">AI Math Calculator</h1>
+    <main className="mx-auto max-w-4xl px-4 py-10">
+      <h1 className="text-3xl font-bold mb-6">AI Math Calculator</h1>
+      <p className="mb-4 text-zinc-300">
+        Try: <code>solve(x**2 - 4, x)</code> or <code>integrate(sin(x), x)</code>
+      </p>
 
-        <p className="text-zinc-400 mb-4">
-          Try: <code className="text-zinc-200">solve(x**2 - 4, x)</code> or{' '}
-          <code className="text-zinc-200">integrate(sin(x), x)</code>
-        </p>
-
-        <div className="flex gap-2 mb-4">
-          <input
-            className="flex-1 rounded-md bg-zinc-900 px-3 py-3 outline-none ring-1 ring-zinc-800 focus:ring-zinc-600"
-            value={expr}
-            onChange={(e) => setExpr(e.target.value)}
-            placeholder="integrate(sin(x), x)"
-          />
-          <button
-            onClick={compute}
-            disabled={busy}
-            className="rounded-md bg-emerald-600 px-4 py-3 font-medium hover:bg-emerald-500 disabled:opacity-50"
-          >
-            {busy ? 'Computing…' : 'Compute'}
-          </button>
-        </div>
-
-        {/* Result */}
-        {res && (
-          <div className="mt-4">
-            {res.ok ? (
-              <>
-                <div className="rounded-md bg-zinc-900 p-4 ring-1 ring-zinc-800">
-                  <div className="text-zinc-400 text-sm mb-2">LaTeX</div>
-                  <div className="bg-black/30 rounded p-3 overflow-x-auto">
-                    <LatexBlock tex={res.latex} display />
-                  </div>
-                </div>
-
-                <div className="mt-4 rounded-md bg-zinc-900 p-4 ring-1 ring-zinc-800">
-                  <div className="text-zinc-400 text-sm mb-1">Raw JSON</div>
-                  <pre className="text-sm whitespace-pre-wrap">
-                    {JSON.stringify(res, null, 2)}
-                  </pre>
-                </div>
-              </>
-            ) : (
-              <div className="rounded-md bg-red-900/30 p-4 ring-1 ring-red-800">
-                <div className="font-medium text-red-300">Error</div>
-                <div className="text-red-200">{res.error}</div>
-              </div>
-            )}
-          </div>
-        )}
+      <div className="flex gap-2 mb-4">
+        <input
+          className="flex-1 rounded bg-zinc-900 border border-zinc-700 px-3 py-2 outline-none focus:border-zinc-500"
+          value={expr}
+          onChange={(e) => setExpr(e.target.value)}
+          placeholder="Enter expression..."
+        />
+        <button
+          onClick={onCompute}
+          disabled={loading}
+          className="rounded bg-emerald-600 px-4 py-2 font-semibold hover:bg-emerald-500 disabled:opacity-60"
+        >
+          {loading ? "Computing…" : "Compute"}
+        </button>
       </div>
+
+      {err && (
+        <div className="rounded border border-red-600 bg-red-900/30 p-3 text-red-200 mb-4">
+          Error: {err}
+        </div>
+      )}
+
+      {data && (
+        <div className="space-y-4">
+          {/* Pretty LaTeX result */}
+          {data.latex && (
+            <div className="rounded border border-zinc-700 bg-zinc-900 p-4">
+              <h2 className="font-semibold mb-2">Result (LaTeX)</h2>
+              <LatexBlock latex={data.latex} displayMode />
+            </div>
+          )}
+
+          {/* Raw JSON for debugging */}
+          <div className="rounded border border-zinc-700 bg-zinc-900 p-4">
+            <h2 className="font-semibold mb-2">Raw Response</h2>
+            <pre className="whitespace-pre-wrap break-all text-sm">
+              {JSON.stringify(data, null, 2)}
+            </pre>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
