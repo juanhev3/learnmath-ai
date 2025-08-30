@@ -1,5 +1,6 @@
 import "./globals.css";
 import Link from "next/link";
+import 'katex/dist/katex.min.css';
 
 export const metadata = {
   title: "LearnMath-AI",

@@ -1,16 +1,18 @@
 services:
   frontend:
     build:
-      context: ../../frontend
-      dockerfile: ../docker/frontend.Dockerfile
+      context: ../..              # <<< project root
+      dockerfile: infra/docker/frontend.Dockerfile
     image: compose-frontend
+    environment:
+      - NODE_ENV=production
     depends_on:
       - backend
 
   backend:
     build:
-      context: ../../backend
-      dockerfile: ../docker/backend.Dockerfile
+      context: ../..              # <<< project root
+      dockerfile: infra/docker/backend.Dockerfile
     image: compose-backend
 
   proxy:

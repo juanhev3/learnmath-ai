@@ -1,15 +1,19 @@
-{
-  auto_https off
-}
-
 :80 {
-  encode gzip
+	encode gzip
 
-  @api path /api/* /healthz
-  handle @api {
-    reverse_proxy backend:8000
-  }
+	# Frontend (Next.js on port 3000)
+	handle_path /_next/* {
+		reverse_proxy frontend:3000
+	}
+	handle_path /public/* {
+		reverse_proxy frontend:3000
+	}
 
-  # Everything else → frontend
-  reverse_proxy frontend:3000
+	# API (FastAPI on port 8000)
+	handle_path /api/* {
+		reverse_proxy backend:8000
+	}
+
+	# Everything else -> frontend
+	reverse_proxy frontend:3000
 }
