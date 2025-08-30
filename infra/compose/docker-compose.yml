@@ -1,31 +1,25 @@
 services:
-  proxy:
-    image: caddy:2
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./../proxy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - frontend
-      - backend
-
   frontend:
     build:
-      context: ../..           # repo root
-      dockerfile: infra/docker/frontend.Dockerfile
-    restart: unless-stopped
+      context: ../../frontend
+      dockerfile: ../docker/frontend.Dockerfile
+    image: compose-frontend
+    depends_on:
+      - backend
 
   backend:
     build:
-      context: ../..
-      dockerfile: infra/docker/backend.Dockerfile
-    restart: unless-stopped
+      context: ../../backend
+      dockerfile: ../docker/backend.Dockerfile
+    image: compose-backend
 
-volumes:
-  caddy_data: {}
-  caddy_config: {}
-
+  proxy:
+    image: caddy:2
+    container_name: compose-proxy-1
+    ports:
+      - "80:80"
+    volumes:
+      - ../proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - frontend
+      - backend

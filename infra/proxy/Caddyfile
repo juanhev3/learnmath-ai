@@ -1,10 +1,15 @@
+{
+  auto_https off
+}
+
 :80 {
-  # /api -> backend (FastAPI). handle_path strips the /api prefix.
-  handle_path /api/* {
+  encode gzip
+
+  @api path /api/* /healthz
+  handle @api {
     reverse_proxy backend:8000
   }
 
-  # everything else -> frontend (Next.js)
+  # Everything else → frontend
   reverse_proxy frontend:3000
 }
-
