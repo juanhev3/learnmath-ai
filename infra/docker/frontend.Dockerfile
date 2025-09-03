@@ -1,4 +1,4 @@
-# 1) deps: install ALL deps (including devDependencies)
+# 1) deps: install ALL deps (incl. devDependencies)
 FROM node:20-alpine AS deps
 WORKDIR /app
 COPY frontend/package*.json ./
@@ -15,9 +15,8 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-# Copy built app & public assets
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
 COPY --from=build /app/package.json ./package.json
 EXPOSE 3000
-CMD ["node", "node_modules/next/dist/bin/next", "start", "-p", "3000", "-H", "0.0.0.0"]
+CMD ["npm", "run", "start"]
